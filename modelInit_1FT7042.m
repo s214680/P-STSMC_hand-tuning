@@ -1,6 +1,8 @@
 clear all;
 clc;
 
+addpath('Matlab plots\');
+
 %% Inputs to the switches in the Simulink model
 % theta_true = 1 when running P-STSMC controller (otherwise 0)
 theta_true = 1;
@@ -16,11 +18,16 @@ xf = 1;
 
 %% Controller parameters
 % P-controller parameter
-k_pos = 23.4913;
+k_pos = 21.4260;
 
 % STSMC (in nonlinear controller for omega_m)
-k1 = 4.9905;
-k2 = 9.9829;
+k1 = 1.9865;
+k2 = 0.9291;
+
+% Dimitrios' values:
+% k_pos = 9;
+% k1 = 0.9;
+% k2 = 75;
 
 %% Parameters for drive train
 % This is the initialization script for the motor and axle parameters. Both
@@ -29,7 +36,8 @@ k2 = 9.9829;
 % Motor and load mechanical parameters
 N = 1;                  % -- Gear ratio
 J_m = 2.81e-4 + 5.5e-4; % kgm^2 -- Moment of inertia
-J_l = 1;                % kg m^2 -- Moment of inertia
+% J_l = 1;                % kg m^2 -- Moment of inertia
+J_l = 0.000831;
 
 % Common simulation parameters
 T_s = 0.000125; 		% Sampling time for control loops. For data acquisition, it is 0.125 ms
@@ -52,16 +60,40 @@ x_0 = [0,0];
 x_l_0 = [0,0];
 
 %% Simulink simulation - STSMC and P-STSMC hand-tuning
-driveTrain_sim = sim("driveTrain_P_STSMC", 10);
-% driveTrain_sim = sim("driveTrain_P_STSMC_diff_filter", 10);
+open_system('driveTrain_P_STSMC');
+set_param('driveTrain_P_STSMC', 'Solver', 'FixedStepAuto', 'FixedStep', '0.000125');
+driveTrain_sim = sim('driveTrain_P_STSMC', 10);
 
+%% Extracting data
+omega_r_timeseries = driveTrain_sim.omega_r_out;
+theta_r_timeseries = driveTrain_sim.theta_r_out;
+omega_m_timeseries = driveTrain_sim.omega_m_out;
+theta_l_timeseries = driveTrain_sim.theta_l_out;
+
+% Extract data and time
+time = omega_r_timeseries.Time;
+omega_r = omega_r_timeseries.Data;
+theta_r = theta_r_timeseries.Data;
+omega_m = omega_m_timeseries.Data;
+theta_l = theta_l_timeseries.Data;
+
+%% Loss and RSME calculations (same as used for DiffTune)
+% Quadratic loss function: (Yi-Yi_hat)^2
+% MSE = 1/N sum_i^N((Yi-Yi_hat)^2)
+
+e_theta = theta_r - theta_l;
+loss_theta = e_theta .^ 2;
+acc_loss_theta = sum(loss_theta);   % accumulated loss
+rmse_theta = sqrt(1/length(time) * acc_loss_theta);
+
+%% Plots
 h1 = figure(1);
 
 if theta_true == 0
     if omega_step_true == 1
-        plot(driveTrain_sim.omega_r_out, 'LineWidth', 1);
+        plot(driveTrain_sim.omega_r_out, 'LineWidth', 1.5);
         hold on;
-        plot(driveTrain_sim.omega_m_out, 'LineWidth', 1);
+        plot(driveTrain_sim.omega_m_out, 'LineWidth', 1.5);
         hold on;
         yline(1.06, ':k');
         %hold on;
@@ -76,28 +108,28 @@ if theta_true == 0
         ylabel('ang. velocity (rad/s)');
         legend('\omega_r', '\omega_m', 'Location', 'southeast');
         title('Simulink simulation of step response');
-        saveas(h1, 'step response of STSMC hand-tuning.png');
+        saveas(h1, 'Matlab plots\step response of STSMC hand-tuning.png');
     else
-        plot(driveTrain_sim.omega_r_out, 'LineWidth', 1);
+        plot(driveTrain_sim.omega_r_out, 'LineWidth', 1.5);
         hold on;
-        plot(driveTrain_sim.omega_m_out, 'LineWidth', 1);
+        plot(driveTrain_sim.omega_m_out, 'LineWidth', 1.5);
         hold off;
         grid on;
         xlabel('time (s)');
         ylabel('ang. velocity (rad/s)');
         legend('\omega_r', '\omega_m', 'Location', 'southeast');
         title('Simulink simulation of sine response');
-        saveas(h1, 'sine response of STSMC hand-tuning.png');
+        saveas(h1, 'Matlab plots\sine response of STSMC hand-tuning.png');
     end
+    text(0.5,-0.10,['k1 = ' num2str(k1)]);
+    text(0.5,-1.25,['k2 = ' num2str(k2)]);
 else
     if theta_step_true == 1
-        plot(driveTrain_sim.theta_r_out, 'LineWidth', 1);
+        plot(driveTrain_sim.theta_r_out, 'LineWidth', 1.5);
         hold on;
-        plot(driveTrain_sim.theta_l_out, 'LineWidth', 1);
+        plot(driveTrain_sim.theta_l_out, 'LineWidth', 1.5);
         hold on;
         yline(1.06, ':k');
-        %hold on;
-        %yline(0.94, ':k');
         hold on;
         yline(1.02, '--k');
         hold on;
@@ -107,22 +139,70 @@ else
         xlabel('time (s)');
         ylabel('position (rad)');
         legend('\theta_r', '\theta_l', 'Location', 'southeast');
-        title('Simulink simulation of step response');
-        saveas(h1, 'step response of P-STSMC hand-tuning.png');
+        title('Hand-tuned P-STSMC step response');
+        text(2.10,0.3,['k1 = ' sprintf('%.2f', k1)]);
+        text(2.10,0.25,['k2 = ' sprintf('%.2f', k2)]);
+        text(2.10,0.2,['k_pos = ' sprintf('%.2f', k_pos)]);
+        text(2.10,0.1,['rmse = ' sprintf('%.2f', rmse_theta)]);
+        saveas(h1, 'Matlab plots\step response of P-STSMC hand-tuning.png');
     else
-        plot(driveTrain_sim.theta_r_out, 'LineWidth', 1);
+        % plot(driveTrain_sim.theta_r_out, '--', 'LineWidth', 1.5);
+        % hold on;
+        plot(driveTrain_sim.theta_l_out, 'LineWidth', 1.5);
         hold on;
-        plot(driveTrain_sim.theta_l_out, 'LineWidth', 1);
+        plot(driveTrain_sim.theta_r_out, '--', 'LineWidth', 1.5);
         hold off;
         grid on;
         xlabel('time (s)');
         ylabel('position (rad)');
-        legend('\theta_r', '\theta_l', 'Location', 'southeast');
-        title('Simulink simulation of sine response');
-        % saveas(h1, 'sine response of P-STSMC hand-tuning.png');
-        saveas(h1, 'sine response of P-STSMC hand-tuning.png');
+        lgd = legend('\theta_l', '\theta_r', 'Location', 'southeast');
+        set(lgd, 'FontSize', 11);
+        text(0.5,-0.70,['k1 = ' sprintf('%.4f', k1)]);
+        text(0.5,-0.85,['k2 = ' sprintf('%.4f', k2)]);
+        text(0.5,-1.00,['k_pos = ' sprintf('%.4f', k_pos)]);
+        % text(0.5,-1.10,['acc. loss = ' sprintf('%.4f', acc_loss_theta)]);
+        text(0.5,-1.25,['rmse = ' sprintf('%.4f', rmse_theta)]);
+        % title('Hand-tuned P-STSMC sine response');
+        % saveas(h1, 'Matlab plots\sine response of P-STSMC hand-tuning.png');
+        title('Sine response of DiffTune values for P-STSMC')
+        saveas(h1, 'Matlab plots\sine response of DiffTune values for P-STSMC.png');
     end
 end
+
+%%
+h1 = figure(1);
+
+subplot(2,1,1);
+plot(time, theta_l, 'LineWidth', 1.5);
+hold on;
+plot(time, theta_r, '--', 'LineWidth', 1.5);
+hold off;
+grid on;
+xlabel('time (s)');
+ylabel('position (rad)');
+lgd = legend('\theta_l', '\theta_r', 'Location', 'southeast');
+set(lgd, 'FontSize', 10);
+
+text(0.5,-0.00,['k1 = ' sprintf('%.4f', k1)],'FontSize',10);
+text(0.5,-0.25,['k2 = ' sprintf('%.4f', k2)],'FontSize',10);
+text(0.5,-0.50,['k\_pos = ' sprintf('%.4f', k_pos)],'FontSize',10);
+text(0.5,-0.75,['rmse = ' sprintf('%.4f', rmse_theta)],'FontSize',10);
+
+subplot(2,1,2);
+plot(time, omega_m, 'LineWidth', 1.5);
+hold on;
+plot(time, omega_r, '--', 'LineWidth', 1.5);
+hold off;
+grid on;
+xlabel('time (s)');
+ylabel('velocity (rad/s)');
+lgd = legend('\omega_m', '\omega_r', 'Location', 'northeast');
+set(lgd, 'FontSize', 10);
+
+sgtitle('Sine response with tuned P-STSMC using DiffTune');
+
+saveas(h1, 'Matlab plots\Simulation of DiffTune values for P-STSMC.png');
+
 
 %%
 disp('Ran modelInit_1Ft7042.m file');

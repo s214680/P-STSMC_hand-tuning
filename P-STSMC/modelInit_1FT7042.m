@@ -16,11 +16,11 @@ xf = 1;
 
 %% Controller parameters
 % P-controller parameter
-k_pos = 23.4913;
+k_pos = 23.4538;
 
 % STSMC (in nonlinear controller for omega_m)
-k1 = 4.9905;
-k2 = 9.9829;
+k1 = 4.9594;
+k2 = 9.9830;
 
 %% Parameters for drive train
 % This is the initialization script for the motor and axle parameters. Both
