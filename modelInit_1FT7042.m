@@ -24,9 +24,13 @@ xf = 1;
 % k1 = 1.9865;
 % k2 = 0.9291;
 
-k1 = 0.85;
-k2 = 15;
-k_pos = 10;
+% k1 = 0.85;
+% k2 = 15;
+% k_pos = 10;
+
+k1 = 0.492;
+k2 = 10;
+k_pos = 5;
 
 % Dimitrios' values:
 % k_pos = 9;
@@ -123,8 +127,8 @@ ylim([-1 1]);
 xlabel('time (s)');
 ylabel('position (rad)');
 text(0.5,-0.1,['k1 = ' sprintf('%.3f', k1)]);
-text(0.5,-0.3,['k2 = ' sprintf('%.3f', k2)]);
-text(0.5,-0.5,['k_pos = ' sprintf('%.3f', k_pos)]);
+text(0.5,-0.3,['k2 = ' sprintf('%.2f', k2)]);
+text(0.5,-0.5,['k_pos = ' sprintf('%.2f', k_pos)]);
 text(0.5,-0.7,['rmse = ' sprintf('%.4f', rmse_theta)]);
 title('Hand-tuned P-STSMC sine response');
 
