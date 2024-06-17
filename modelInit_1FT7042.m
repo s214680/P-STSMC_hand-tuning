@@ -11,18 +11,21 @@ theta_true = 1;
 theta_step_true = 0;    % doesn't matter when theta_true = 0
 
 % omega_step_true = 1 when running step input for omega_r (0 for sine input)
-omega_step_true = 0;
+omega_step_true = 1;
 
 % Frequency for sine wave
 xf = 1;
 
 %% Controller parameters
 % P-controller parameter
-k_pos = 21.4260;
+% k_pos = 21.4260;
+k_pos = 50;
 
 % STSMC (in nonlinear controller for omega_m)
-k1 = 1.9865;
-k2 = 0.9291;
+% k1 = 1.9865;
+% k2 = 0.9291;
+k1 = 50;
+k2 = 50;
 
 % Dimitrios' values:
 % k_pos = 9;
@@ -35,13 +38,15 @@ k2 = 0.9291;
 
 % Motor and load mechanical parameters
 N = 1;                  % -- Gear ratio
-J_m = 2.81e-4 + 5.5e-4; % kgm^2 -- Moment of inertia
+% J_m = 2.81e-4 + 5.5e-4; % kgm^2 -- Moment of inertia
 % J_l = 1;                % kg m^2 -- Moment of inertia
-J_l = 0.000831;
+J_m = 8.31e-4;
+J_l = 8.31e-4;
+% J_m = 1;
+% J_l = 1;
 
 % Common simulation parameters
 T_s = 0.000125; 		% Sampling time for control loops. For data acquisition, it is 0.125 ms
-% T_s = 0.001;
 % T_log = T_s; % har bare valgt en video der er større end T_s
 T_log = 0.001;
 % we we use Ts instead of T_log it might give way too many samples
@@ -60,8 +65,8 @@ x_0 = [0,0];
 x_l_0 = [0,0];
 
 %% Simulink simulation - STSMC and P-STSMC hand-tuning
-open_system('driveTrain_P_STSMC');
-set_param('driveTrain_P_STSMC', 'Solver', 'FixedStepAuto', 'FixedStep', '0.000125');
+% open_system('driveTrain_P_STSMC');
+% set_param('driveTrain_P_STSMC', 'Solver', 'FixedStepAuto', 'FixedStep', '0.000125');
 driveTrain_sim = sim('driveTrain_P_STSMC', 10);
 
 %% Extracting data
@@ -91,9 +96,9 @@ h1 = figure(1);
 
 if theta_true == 0
     if omega_step_true == 1
-        plot(driveTrain_sim.omega_r_out, 'LineWidth', 1.5);
-        hold on;
         plot(driveTrain_sim.omega_m_out, 'LineWidth', 1.5);
+        hold on;
+        plot(driveTrain_sim.omega_r_out, '--', 'LineWidth', 1.5);
         hold on;
         yline(1.06, ':k');
         %hold on;
@@ -110,9 +115,9 @@ if theta_true == 0
         title('Simulink simulation of step response');
         saveas(h1, 'Matlab plots\step response of STSMC hand-tuning.png');
     else
-        plot(driveTrain_sim.omega_r_out, 'LineWidth', 1.5);
-        hold on;
         plot(driveTrain_sim.omega_m_out, 'LineWidth', 1.5);
+        hold on;
+        plot(driveTrain_sim.omega_r_out, '--', 'LineWidth', 1.5);
         hold off;
         grid on;
         xlabel('time (s)');
@@ -121,8 +126,8 @@ if theta_true == 0
         title('Simulink simulation of sine response');
         saveas(h1, 'Matlab plots\sine response of STSMC hand-tuning.png');
     end
-    text(0.5,-0.10,['k1 = ' num2str(k1)]);
-    text(0.5,-1.25,['k2 = ' num2str(k2)]);
+    % text(0.5,-0.10,['k1 = ' num2str(k1)]);
+    % text(0.5,-1.25,['k2 = ' num2str(k2)]);
 else
     if theta_step_true == 1
         plot(driveTrain_sim.theta_r_out, 'LineWidth', 1.5);
@@ -169,39 +174,66 @@ else
     end
 end
 
-%%
-h1 = figure(1);
+%% Simulation of hand-tuned P-STSMC
+% h1 = figure(1);
+% 
+% plot(time, theta_l, 'LineWidth', 1.5);
+% hold on;
+% plot(time, theta_r, '--', 'LineWidth', 1.5);
+% hold off;
+% grid on;
+% xlabel('time (s)');
+% ylabel('position (rad)');
+% lgd = legend('\theta_l', '\theta_r', 'Location', 'southeast');
+% set(lgd, 'FontSize', 10);
+% 
+% text(0.5,-0.00,['k1 = ' sprintf('%.4f', k1)],'FontSize',10);
+% text(0.5,-0.25,['k2 = ' sprintf('%.4f', k2)],'FontSize',10);
+% text(0.5,-0.50,['k\_pos = ' sprintf('%.4f', k_pos)],'FontSize',10);
+% text(0.5,-0.75,['rmse = ' sprintf('%.4f', rmse_theta)],'FontSize',10);
+% title('Sine response with tuned P-STSMC using hand-tuning', 'FontSize', 12);
+% 
+% % text(2.1,0.24,['k1 = ' sprintf('%.4f', k1)],'FontSize',10);
+% % text(2.1,0.17,['k2 = ' sprintf('%.4f', k2)],'FontSize',10);
+% % text(2.1,0.10,['k\_pos = ' sprintf('%.4f', k_pos)],'FontSize',10);
+% % title('Step response with tuned P-STSMC using hand-tuning', 'FontSize', 12);
+% 
+% saveas(h1, 'Matlab plots\Simulation of hand-tuned values for P-STSMC.png');
 
-subplot(2,1,1);
-plot(time, theta_l, 'LineWidth', 1.5);
-hold on;
-plot(time, theta_r, '--', 'LineWidth', 1.5);
-hold off;
-grid on;
-xlabel('time (s)');
-ylabel('position (rad)');
-lgd = legend('\theta_l', '\theta_r', 'Location', 'southeast');
-set(lgd, 'FontSize', 10);
 
-text(0.5,-0.00,['k1 = ' sprintf('%.4f', k1)],'FontSize',10);
-text(0.5,-0.25,['k2 = ' sprintf('%.4f', k2)],'FontSize',10);
-text(0.5,-0.50,['k\_pos = ' sprintf('%.4f', k_pos)],'FontSize',10);
-text(0.5,-0.75,['rmse = ' sprintf('%.4f', rmse_theta)],'FontSize',10);
-
-subplot(2,1,2);
-plot(time, omega_m, 'LineWidth', 1.5);
-hold on;
-plot(time, omega_r, '--', 'LineWidth', 1.5);
-hold off;
-grid on;
-xlabel('time (s)');
-ylabel('velocity (rad/s)');
-lgd = legend('\omega_m', '\omega_r', 'Location', 'northeast');
-set(lgd, 'FontSize', 10);
-
-sgtitle('Sine response with tuned P-STSMC using DiffTune');
-
-saveas(h1, 'Matlab plots\Simulation of DiffTune values for P-STSMC.png');
+%% Testing DiffTune values in Simulink model
+% h2 = figure(2);
+% 
+% subplot(2,1,1);
+% plot(time, theta_l, 'LineWidth', 1.5);
+% hold on;
+% plot(time, theta_r, '--', 'LineWidth', 1.5);
+% hold off;
+% grid on;
+% xlabel('time (s)');
+% ylabel('position (rad)');
+% lgd = legend('\theta_l', '\theta_r', 'Location', 'southeast');
+% set(lgd, 'FontSize', 10);
+% 
+% text(0.5,-0.00,['k1 = ' sprintf('%.4f', k1)],'FontSize',10);
+% text(0.5,-0.25,['k2 = ' sprintf('%.4f', k2)],'FontSize',10);
+% text(0.5,-0.50,['k\_pos = ' sprintf('%.4f', k_pos)],'FontSize',10);
+% text(0.5,-0.75,['rmse = ' sprintf('%.4f', rmse_theta)],'FontSize',10);
+% 
+% subplot(2,1,2);
+% plot(time, omega_m, 'LineWidth', 1.5);
+% hold on;
+% plot(time, omega_r, '--', 'LineWidth', 1.5);
+% hold off;
+% grid on;
+% xlabel('time (s)');
+% ylabel('velocity (rad/s)');
+% lgd = legend('\omega_m', '\omega_r', 'Location', 'northeast');
+% set(lgd, 'FontSize', 10);
+% 
+% sgtitle('Sine response with tuned P-STSMC using DiffTune');
+% 
+% saveas(h2, 'Matlab plots\Simulation of DiffTune values for P-STSMC.png');
 
 
 %%
